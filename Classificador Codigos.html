@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Compatibilizador de Chave de Avanço AC → DP</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #667085;
+      --primary: #0f766e;
+      --primary-2: #14b8a6;
+      --danger: #b42318;
+      --warning: #b54708;
+      --ok: #027a48;
+      --border: #d0d5dd;
+      --soft: #eef6f6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(135deg, #edf6f9, #f8fafc);
+      color: var(--text);
+    }
+
+    .app {
+      width: min(1120px, 94%);
+      margin: 32px auto;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #0f766e, #115e59);
+      color: white;
+      padding: 28px;
+      border-radius: 22px;
+      box-shadow: 0 18px 45px rgba(15, 118, 110, 0.22);
+      margin-bottom: 22px;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.6rem, 3vw, 2.35rem);
+      letter-spacing: -0.5px;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 820px;
+      line-height: 1.5;
+      opacity: 0.94;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 0.95fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(208, 213, 221, 0.8);
+      border-radius: 20px;
+      box-shadow: 0 12px 35px rgba(16, 24, 40, 0.07);
+      padding: 22px;
+    }
+
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 15px 14px;
+      font-size: 1rem;
+      outline: none;
+      background: white;
+    }
+
+    input:focus {
+      border-color: var(--primary-2);
+      box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.16);
+    }
+
+    button {
+      border: none;
+      border-radius: 14px;
+      padding: 13px 17px;
+      font-weight: 800;
+      cursor: pointer;
+      background: var(--primary);
+      color: white;
+      white-space: nowrap;
+      transition: 0.2s;
+    }
+
+    button:hover { transform: translateY(-1px); background: #0b5f58; }
+
+    .hint {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.35;
+    }
+
+    .examples {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .chip {
+      border: 1px solid #99d7cf;
+      background: #ecfdf9;
+      color: #0f766e;
+      border-radius: 999px;
+      padding: 8px 11px;
+      font-weight: 700;
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+
+    .result-box {
+      margin-top: 18px;
+      border-radius: 18px;
+      border: 1px solid #cce7e2;
+      background: var(--soft);
+      padding: 18px;
+      display: none;
+    }
+
+    .result-box.active { display: block; }
+
+    .result-title {
+      font-size: 0.92rem;
+      color: var(--muted);
+      margin-bottom: 5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .big-code {
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+
+    .status {
+      border-radius: 12px;
+      padding: 10px 12px;
+      line-height: 1.35;
+      font-weight: 700;
+      margin-top: 12px;
+    }
+
+    .status.ok { background: #ecfdf3; color: var(--ok); border: 1px solid #abefc6; }
+    .status.warn { background: #fffaeb; color: var(--warning); border: 1px solid #fedf89; }
+    .status.error { background: #fef3f2; color: var(--danger); border: 1px solid #fecdca; }
+
+    .details {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    @media (max-width: 560px) {
+      .input-row { flex-direction: column; }
+      .details { grid-template-columns: 1fr; }
+      button { width: 100%; }
+    }
+
+    .item {
+      background: white;
+      border: 1px solid rgba(208, 213, 221, 0.85);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .item small {
+      display: block;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .item strong { font-size: 1rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      overflow: hidden;
+      border-radius: 14px;
+    }
+
+    th, td {
+      border-bottom: 1px solid #eaecf0;
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #344054;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #eaecf0;
+      border-radius: 16px;
+    }
+
+    .mini-title {
+      margin: 18px 0 8px;
+      color: #344054;
+      font-weight: 800;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .code-preview {
+      font-family: Consolas, Monaco, monospace;
+      background: #101828;
+      color: white;
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 12px;
+      overflow-x: auto;
+      font-size: 0.92rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <h1>Compatibilizador de Chave de Avanço AC → DP</h1>
+      <p>
+        Digite o código da chave de avanço no mesmo campo. O sistema identifica automaticamente se a consulta é de <b>AC para DP</b> ou de <b>DP para AC</b> e informa o modelo compatível correspondente.
+      </p>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Consultar chave de avanço</h2>
+
+        <label for="codigo">Código da chave solicitada pelo cliente</label>
+        <div class="input-row">
+          <input id="codigo" type="text" placeholder="Ex.: AC 09 GX ou DP 03 N" autocomplete="off" />
+          <button onclick="classificarCodigo()">Classificar</button>
+        </div>
+
+        <div class="hint">
+          Exemplos aceitos: <b>AC 09 GX</b>, <b>AC09GX</b>, <b>AC09-GZ0/25L1EA01/0007</b>, <b>DP 03 N</b> ou <b>DP03N</b>.
+        </div>
+
+        <div class="examples">
+          <span class="chip" onclick="usarExemplo('AC 09 GX')">AC 09 GX</span>
+          <span class="chip" onclick="usarExemplo('DP 03 N')">DP 03 N</span>
+          <span class="chip" onclick="usarExemplo('AC 09 GZ 0/25 L1 E A01 /0007')">AC 09 GZ 0/25 L1 E A01 /0007</span>
+          <span class="chip" onclick="usarExemplo('DP 02 J')">DP 02 J</span>
+          <span class="chip" onclick="usarExemplo('AC16CY0/23L4')">AC16CY0/23L4</span>
+          <span class="chip" onclick="usarExemplo('AC32RW0/12L2A02')">AC32RW0/12L2A02</span>
+        </div>
+
+        <div id="resultado" class="result-box">
+          <div class="result-title">Modelo compatível encontrado</div>
+          <div id="codigoDP" class="big-code">DP -- --</div>
+          <div id="status" class="status ok"></div>
+
+          <div class="details" id="detalhes"></div>
+          <div id="codigoCompleto" class="code-preview"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Tabelas de comparação</h2>
+
+        <div class="mini-title">Tipo de código</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>AC</th>
+                <th>Descrição AC</th>
+                <th>DP</th>
+                <th>Descrição DP</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>R</td><td>Real Binary Code</td><td>01</td><td>Real Binary</td></tr>
+              <tr><td>C</td><td>Complementary Binary Code</td><td>02</td><td>Complementary Binary</td></tr>
+              <tr><td>G</td><td>Real Gray Code</td><td>03</td><td>Real Gray</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mini-title">Ângulo de passo</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>AC</th>
+                <th>Ângulo AC</th>
+                <th>DP</th>
+                <th>Faixa DP</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>X</td><td>30°</td><td>N</td><td>0 a 11</td></tr>
+              <tr><td>W</td><td>360°/13 = 27,69°</td><td>S</td><td>0 a 12</td></tr>
+              <tr><td>Y</td><td>15°</td><td>J</td><td>0 a 23</td></tr>
+              <tr><td>Z</td><td>360°/26 = 13,85°</td><td>H</td><td>0 a 25</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="footer-note">
+          Observação: este sistema compara a chave de avanço solicitada no padrão AC com o modelo equivalente no padrão DP, e também permite a consulta inversa de DP para AC. A compatibilidade principal é feita pelo <b>tipo de código</b> e pelo <b>ângulo de passo</b>. Campos físicos, como montagem, eixo, conector, trava e comprimento, devem ser conferidos antes da venda ou substituição.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const mapaTipo = {
+      R: { dp: '01', descricao: 'Real Binary' },
+      C: { dp: '02', descricao: 'Complementary Binary' },
+      G: { dp: '03', descricao: 'Real Gray' }
+    };
+
+    const mapaTipoReverso = {
+      '01': { ac: 'R', descricao: 'Real Binary' },
+      '02': { ac: 'C', descricao: 'Complementary Binary' },
+      '03': { ac: 'G', descricao: 'Real Gray' },
+      '04': { ac: 'C', descricao: 'Complementary Gray / não aparece claramente na tabela AC enviada' }
+    };
+
+    const mapaAngulo = {
+      X: { dp: 'N', angulo: '30°', faixa: '0 a 11' },
+      W: { dp: 'S', angulo: '27,69°', faixa: '0 a 12' },
+      Y: { dp: 'J', angulo: '15°', faixa: '0 a 23' },
+      Z: { dp: 'H', angulo: '13,85°', faixa: '0 a 25' }
+    };
+
+    const mapaAnguloReverso = {
+      N: { ac: 'X', angulo: '30°', faixa: '0 a 11' },
+      S: { ac: 'W', angulo: '27,69°', faixa: '0 a 12' },
+      J: { ac: 'Y', angulo: '15°', faixa: '0 a 23' },
+      H: { ac: 'Z', angulo: '13,85°', faixa: '0 a 25' },
+      L: { ac: null, angulo: '20°', faixa: '0 a 17' }
+    };
+
+    const montagem = {
+      '09': 'M9 nut',
+      '16': 'M16 adapter',
+      '32': 'Adapter, passo de montagem 32 mm'
+    };
+
+    const comprimentoEixo = {
+      '09': { L1: '16 mm', L2: '18 mm', L3: '20 mm', L4: '22 mm' },
+      '16': { L4: '19,5 mm' },
+      '32': { L1: '14,5 mm', L2: '16,5 mm', L3: '18,5 mm', L4: '20,5 mm' }
+    };
+
+    const conectores = {
+      A01: '8 terminais, conector em ângulo reto',
+      A02: '8 terminais, conector reto',
+      B00: '7 terminais, sem conector',
+      B01: '7 terminais, conector em ângulo reto',
+      B02: '7 terminais, conector reto',
+      CB: 'conector fixado verticalmente',
+      CS: 'conector fixado horizontalmente'
+    };
+
+    const trava = {
+      '0007': 'com lock ring',
+      '0009': 'com adhesive lock ring'
+    };
+
+    function limparCodigo(valor) {
+      return Array.from(valor.toUpperCase())
+        .filter(ch => ch.trim() !== '' && ch !== '-' && ch !== '_')
+        .join('')
+        .trim();
+    }
+
+    function somentePartes(valor) {
+      return valor
+        .toUpperCase()
+        .replaceAll('-', ' ')
+        .replaceAll('_', ' ')
+        .replaceAll('/', ' ')
+        .split(' ')
+        .map(p => p.trim())
+        .filter(Boolean);
+    }
+
+    function isNumero(texto) {
+      return texto.length > 0 && Array.from(texto).every(ch => ch >= '0' && ch <= '9');
+    }
+
+    function buscarPrimeiroIncluido(texto, lista) {
+      return lista.find(item => texto.includes(item)) || null;
+    }
+
+    function extrairPosicao(restante) {
+      const barra = restante.indexOf('/');
+      if (barra < 0) return { inicio: null, fim: null };
+
+      let i = barra - 1;
+      let inicio = '';
+      while (i >= 0 && restante[i] >= '0' && restante[i] <= '9') {
+        inicio = restante[i] + inicio;
+        i--;
+      }
+
+      let j = barra + 1;
+      let fim = '';
+      while (j < restante.length && restante[j] >= '0' && restante[j] <= '9') {
+        fim += restante[j];
+        j++;
+      }
+
+      return { inicio: inicio || null, fim: fim || null };
+    }
+
+    function extrairAC(codigoOriginal) {
+      const codigo = limparCodigo(codigoOriginal);
+
+      if (!codigo.startsWith('AC') || codigo.length < 6) {
+        return { erro: 'Código AC não reconhecido. Use AC + montagem 09/16/32 + tipo R/C/G + ângulo X/W/Y/Z. Ex.: AC 09 GX.' };
+      }
+
+      const mount = codigo.slice(2, 4);
+      const tipo = codigo[4];
+      const angulo = codigo[5];
+
+      if (!['09', '16', '32'].includes(mount) || !mapaTipo[tipo] || !mapaAngulo[angulo]) {
+        return { erro: 'Código AC não reconhecido. Use AC + montagem 09/16/32 + tipo R/C/G + ângulo X/W/Y/Z. Ex.: AC 09 GX.' };
+      }
+
+      const restante = codigo.slice(6);
+      const posicao = extrairPosicao(restante);
+      const eixo = buscarPrimeiroIncluido(restante, ['L1', 'L2', 'L3', 'L4']);
+      const conector = buscarPrimeiroIncluido(restante, ['A01', 'A02', 'B00', 'B01', 'B02']);
+      const lockRing = buscarPrimeiroIncluido(restante, ['0007', '0009']);
+      const semStopper = restante.includes('E');
+
+      return {
+        direcao: 'AC_DP',
+        codigoLimpo: codigo,
+        mount,
+        tipo,
+        angulo,
+        inicio: posicao.inicio,
+        fim: posicao.fim,
+        eixo,
+        conector,
+        lockRing,
+        semStopper
+      };
+    }
+
+    function extrairDP(codigoOriginal) {
+      const codigo = limparCodigo(codigoOriginal);
+      const partes = somentePartes(codigoOriginal);
+
+      if (!codigo.startsWith('DP')) {
+        return { erro: 'Código DP não reconhecido. Use o padrão DP + tipo + ângulo. Ex.: DP 03 N.' };
+      }
+
+      let tipo = null;
+      let angulo = null;
+      let inicio = null;
+      let fim = null;
+      let comprimento = null;
+      let formatoEixo = null;
+      let conector = null;
+      let waterproof = null;
+
+      const aposDP = codigo.slice(2);
+      const tipoCurto = aposDP.slice(0, 2);
+      const anguloCurto = aposDP.slice(2, 3);
+      if (mapaTipoReverso[tipoCurto] && mapaAnguloReverso[anguloCurto]) {
+        tipo = tipoCurto;
+        angulo = anguloCurto;
+      }
+
+      if ((!tipo || !angulo) && partes[0] === 'DP') {
+        waterproof = partes[1] === 'P' || partes[1] === 'N' ? partes[1] : null;
+        tipo = partes.find(p => ['01', '02', '03', '04'].includes(p)) || null;
+        angulo = partes.find(p => ['H', 'J', 'N', 'L', 'S'].includes(p)) || null;
+        formatoEixo = partes.find(p => p === 'R') || null;
+        conector = partes.find(p => ['CB', 'CS'].includes(p)) || null;
+
+        const numeros = partes.filter(p => isNumero(p));
+        const indiceTipo = numeros.indexOf(tipo);
+        const posicoes = numeros.filter((_, i) => i !== indiceTipo);
+        if (posicoes.length >= 2) {
+          inicio = posicoes[0];
+          fim = posicoes[1];
+        }
+        if (posicoes.length >= 3) {
+          comprimento = posicoes[2];
+        }
+      }
+
+      if (!tipo || !angulo) {
+        return { erro: 'Não consegui identificar tipo e ângulo no código DP. Exemplo mínimo aceito: DP 03 N.' };
+      }
+
+      return {
+        direcao: 'DP_AC',
+        codigoLimpo: codigo,
+        tipo,
+        angulo,
+        inicio,
+        fim,
+        comprimento,
+        formatoEixo,
+        conector,
+        waterproof
+      };
+    }
+
+    function identificarCodigo(valor) {
+      const codigo = limparCodigo(valor);
+      if (!codigo) return { erro: 'Digite um código para consultar.' };
+      if (codigo.startsWith('AC')) return extrairAC(valor);
+      if (codigo.startsWith('DP')) return extrairDP(valor);
+      return { erro: 'Informe um código iniciando com AC ou DP. Ex.: AC 09 GX ou DP 03 N.' };
+    }
+
+    function validarFaixaAC(dados) {
+      if (!dados.inicio || !dados.fim) return null;
+
+      const limite = Number(mapaAngulo[dados.angulo].faixa.replace('0 a ', ''));
+      const inicio = Number(dados.inicio);
+      const fim = Number(dados.fim);
+
+      if (inicio < 0 || fim > limite || inicio > fim) {
+        return `Atenção: para o ângulo ${mapaAngulo[dados.angulo].angulo}, a faixa esperada é ${mapaAngulo[dados.angulo].faixa}. O código informado tem ${inicio} a ${fim}.`;
+      }
+
+      return `Faixa de posição compatível: ${inicio} a ${fim}.`;
+    }
+
+    function validarFaixaDP(dados) {
+      if (!dados.inicio || !dados.fim) return null;
+      const info = mapaAnguloReverso[dados.angulo];
+      if (!info) return null;
+
+      const limite = Number(info.faixa.replace('0 a ', ''));
+      const inicio = Number(dados.inicio);
+      const fim = Number(dados.fim);
+
+      if (inicio < 0 || fim > limite || inicio > fim) {
+        return `Atenção: para o ângulo ${info.angulo}, a faixa esperada é ${info.faixa}. O código informado tem ${inicio} a ${fim}.`;
+      }
+
+      return `Faixa de posição compatível: ${inicio} a ${fim}.`;
+    }
+
+    function criarItem(titulo, valor) {
+      return `
+        <div class="item">
+          <small>${titulo}</small>
+          <strong>${valor}</strong>
+        </div>
+      `;
+    }
+
+    function renderizarACparaDP(dados) {
+      const codigoDP = document.getElementById('codigoDP');
+      const status = document.getElementById('status');
+      const detalhes = document.getElementById('detalhes');
+      const codigoCompleto = document.getElementById('codigoCompleto');
+
+      const tipoDP = mapaTipo[dados.tipo];
+      const anguloDP = mapaAngulo[dados.angulo];
+      const resultadoCurto = `DP ${tipoDP.dp} ${anguloDP.dp}`;
+
+      codigoDP.textContent = resultadoCurto;
+
+      const validacao = validarFaixaAC(dados);
+      status.className = validacao && validacao.startsWith('Atenção') ? 'status warn' : 'status ok';
+      status.textContent = validacao || 'Compatibilidade encontrada de AC para DP com base no tipo de código e no ângulo de passo da chave de avanço.';
+
+      const itens = [
+        ['Sentido da consulta', 'AC → DP'],
+        ['Código AC identificado', dados.codigoLimpo],
+        ['Montagem', `AC ${dados.mount} — ${montagem[dados.mount]}`],
+        ['Tipo de código', `${dados.tipo} → DP ${tipoDP.dp} — ${tipoDP.descricao}`],
+        ['Ângulo de passo', `${dados.angulo} → DP ${anguloDP.dp} — ${anguloDP.angulo}`],
+        ['Faixa permitida', anguloDP.faixa],
+        ['Posição início/fim', dados.inicio && dados.fim ? `${dados.inicio} a ${dados.fim}` : 'Não informada'],
+        ['Comprimento do eixo', dados.eixo ? `${dados.eixo} — ${(comprimentoEixo[dados.mount] || {})[dados.eixo] || 'não localizado para esta montagem'}` : 'Não informado'],
+        ['Stopper screw', dados.semStopper ? 'Sem stopper screw' : 'Com stopper screw ou não informado'],
+        ['Conector', dados.conector ? `${dados.conector} — ${conectores[dados.conector]}` : 'Sem conector ou não informado'],
+        ['Lock ring', dados.lockRing ? `${dados.lockRing} — ${trava[dados.lockRing]}` : 'Sem lock ring ou não informado']
+      ];
+
+      detalhes.innerHTML = itens.map(([titulo, valor]) => criarItem(titulo, valor)).join('');
+
+      let sugestaoCompleta = resultadoCurto;
+      if (dados.inicio && dados.fim) sugestaoCompleta += ` ${dados.inicio} ${dados.fim}`;
+      sugestaoCompleta += ` [conferir dados físicos: P/N, eixo R, comprimento 16/20 e conector]`;
+
+      codigoCompleto.textContent = `Modelo compatível base: ${sugestaoCompleta}`;
+    }
+
+    function renderizarDPparaAC(dados) {
+      const codigoDP = document.getElementById('codigoDP');
+      const status = document.getElementById('status');
+      const detalhes = document.getElementById('detalhes');
+      const codigoCompleto = document.getElementById('codigoCompleto');
+
+      const tipoAC = mapaTipoReverso[dados.tipo];
+      const anguloAC = mapaAnguloReverso[dados.angulo];
+
+      if (!tipoAC || !anguloAC) {
+        codigoDP.textContent = 'Não classificado';
+        status.className = 'status error';
+        status.textContent = 'Não foi possível encontrar equivalência para o código DP informado.';
+        return;
+      }
+
+      if (!anguloAC.ac) {
+        codigoDP.textContent = 'Sem equivalente AC direto';
+        status.className = 'status warn';
+        status.textContent = `O ângulo DP ${dados.angulo} (${anguloAC.angulo}) aparece na segunda tabela, mas não aparece como opção na primeira tabela AC enviada.`;
+      } else {
+        const resultadoACBase = `AC ?? ${tipoAC.ac}${anguloAC.ac}`;
+        codigoDP.textContent = resultadoACBase;
+        const validacao = validarFaixaDP(dados);
+        status.className = validacao && validacao.startsWith('Atenção') ? 'status warn' : 'status ok';
+        status.textContent = validacao || 'Compatibilidade encontrada de DP para AC. A montagem AC 09, AC 16 ou AC 32 precisa ser confirmada fisicamente, pois o código DP curto não informa essa característica.';
+      }
+
+      const itens = [
+        ['Sentido da consulta', 'DP → AC'],
+        ['Código DP identificado', dados.codigoLimpo],
+        ['Tipo de código', `DP ${dados.tipo} → ${tipoAC.ac} — ${tipoAC.descricao}`],
+        ['Ângulo de passo', `DP ${dados.angulo} → ${anguloAC.ac || 'sem equivalente AC'} — ${anguloAC.angulo}`],
+        ['Faixa permitida', anguloAC.faixa],
+        ['Montagem AC', 'Não informada pelo código DP curto. Confirmar se é AC 09, AC 16 ou AC 32.'],
+        ['Posição início/fim', dados.inicio && dados.fim ? `${dados.inicio} a ${dados.fim}` : 'Não informada'],
+        ['Comprimento do eixo DP', dados.comprimento ? `${dados.comprimento} mm` : 'Não informado'],
+        ['Modelo P/N', dados.waterproof ? `${dados.waterproof === 'P' ? 'P — Waterproof' : 'N — Non Waterproof'}` : 'Não informado'],
+        ['Formato do eixo', dados.formatoEixo ? `${dados.formatoEixo} — Round` : 'Não informado'],
+        ['Conector', dados.conector ? `${dados.conector} — ${conectores[dados.conector]}` : 'Sem conector ou não informado']
+      ];
+
+      detalhes.innerHTML = itens.map(([titulo, valor]) => criarItem(titulo, valor)).join('');
+
+      let sugestaoCompleta = anguloAC.ac ? `AC [09/16/32] ${tipoAC.ac}${anguloAC.ac}` : 'Não há equivalente AC direto para este ângulo';
+      if (dados.inicio && dados.fim && anguloAC.ac) sugestaoCompleta += ` ${dados.inicio}/${dados.fim}`;
+
+      codigoCompleto.textContent = `Modelo compatível base: ${sugestaoCompleta}. A montagem deve ser confirmada antes da venda/substituição.`;
+    }
+
+    function classificarCodigo() {
+      const input = document.getElementById('codigo');
+      const box = document.getElementById('resultado');
+      const codigoDP = document.getElementById('codigoDP');
+      const status = document.getElementById('status');
+      const detalhes = document.getElementById('detalhes');
+      const codigoCompleto = document.getElementById('codigoCompleto');
+
+      const dados = identificarCodigo(input.value);
+      box.classList.add('active');
+      detalhes.innerHTML = '';
+      codigoCompleto.innerHTML = '';
+
+      if (dados.erro) {
+        codigoDP.textContent = 'Não classificado';
+        status.className = 'status error';
+        status.textContent = dados.erro;
+        return;
+      }
+
+      if (dados.direcao === 'AC_DP') {
+        renderizarACparaDP(dados);
+      } else if (dados.direcao === 'DP_AC') {
+        renderizarDPparaAC(dados);
+      }
+    }
+
+    function usarExemplo(codigo) {
+      document.getElementById('codigo').value = codigo;
+      classificarCodigo();
+    }
+
+    document.getElementById('codigo').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') classificarCodigo();
+    });
+  </script>
+</body>
+</html>
