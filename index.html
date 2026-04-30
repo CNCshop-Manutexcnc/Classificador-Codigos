@@ -288,12 +288,14 @@
         </div>
 
         <div class="hint">
-          Exemplos aceitos: <b>AC 09 GX</b>, <b>AC09GX</b>, <b>AC09-GZ0/25L1EA01/0007</b>, <b>DP 03 N</b> ou <b>DP03N</b>.
+          Exemplos aceitos: <b>AC 09 GX</b>, <b>AC09GX</b>, <b>AC09-GZ0/25L1EA01/0007</b>, <b>DP 03 N</b>, <b>DP03N</b>, <b>DPP02J</b> ou <b>DPP22J</b>.
         </div>
 
         <div class="examples">
           <span class="chip" onclick="usarExemplo('AC 09 GX')">AC 09 GX</span>
           <span class="chip" onclick="usarExemplo('DP 03 N')">DP 03 N</span>
+          <span class="chip" onclick="usarExemplo('DPP02J')">DPP02J</span>
+          <span class="chip" onclick="usarExemplo('DPP22J')">DPP22J</span>
           <span class="chip" onclick="usarExemplo('AC 09 GZ 0/25 L1 E A01 /0007')">AC 09 GZ 0/25 L1 E A01 /0007</span>
           <span class="chip" onclick="usarExemplo('DP 02 J')">DP 02 J</span>
           <span class="chip" onclick="usarExemplo('AC16CY0/23L4')">AC16CY0/23L4</span>
@@ -326,7 +328,7 @@
             </thead>
             <tbody>
               <tr><td>R</td><td>Real Binary Code</td><td>01</td><td>Real Binary</td></tr>
-              <tr><td>C</td><td>Complementary Binary Code</td><td>02</td><td>Complementary Binary</td></tr>
+              <tr><td>C</td><td>Complementary Binary Code</td><td>02 = 22</td><td>Complementary Binary</td></tr>
               <tr><td>G</td><td>Real Gray Code</td><td>03</td><td>Real Gray</td></tr>
             </tbody>
           </table>
@@ -369,6 +371,7 @@
     const mapaTipoReverso = {
       '01': { ac: 'R', descricao: 'Real Binary' },
       '02': { ac: 'C', descricao: 'Complementary Binary' },
+      '22': { ac: 'C', descricao: 'Complementary Binary — equivalente ao código 02' },
       '03': { ac: 'G', descricao: 'Real Gray' },
       '04': { ac: 'C', descricao: 'Complementary Gray / não aparece claramente na tabela AC enviada' }
     };
@@ -504,10 +507,11 @@
       const partes = somentePartes(codigoOriginal);
 
       if (!codigo.startsWith('DP')) {
-        return { erro: 'Código DP não reconhecido. Use o padrão DP + tipo + ângulo. Ex.: DP 03 N.' };
+        return { erro: 'Código DP não reconhecido. Use o padrão DP + tipo + ângulo. Ex.: DP 03 N, DP P 02 J ou DPP02J.' };
       }
 
       let tipo = null;
+      let tipoNormalizado = null;
       let angulo = null;
       let inicio = null;
       let fim = null;
@@ -517,16 +521,28 @@
       let waterproof = null;
 
       const aposDP = codigo.slice(2);
-      const tipoCurto = aposDP.slice(0, 2);
-      const anguloCurto = aposDP.slice(2, 3);
+
+      // Aceita formatos curtos: DP03N, DPP02J, DPN03N, DPP22J
+      let ponteiro = 0;
+      if (aposDP[0] === 'P' || aposDP[0] === 'N') {
+        waterproof = aposDP[0];
+        ponteiro = 1;
+      }
+
+      const tipoCurto = aposDP.slice(ponteiro, ponteiro + 2);
+      const anguloCurto = aposDP.slice(ponteiro + 2, ponteiro + 3);
+
       if (mapaTipoReverso[tipoCurto] && mapaAnguloReverso[anguloCurto]) {
         tipo = tipoCurto;
+        tipoNormalizado = tipoCurto === '22' ? '02' : tipoCurto;
         angulo = anguloCurto;
       }
 
+      // Aceita formato separado da segunda tabela: DP P 02 J ou DP P 01 0 20 J 20 R CB
       if ((!tipo || !angulo) && partes[0] === 'DP') {
-        waterproof = partes[1] === 'P' || partes[1] === 'N' ? partes[1] : null;
-        tipo = partes.find(p => ['01', '02', '03', '04'].includes(p)) || null;
+        waterproof = partes[1] === 'P' || partes[1] === 'N' ? partes[1] : waterproof;
+        tipo = partes.find(p => ['01', '02', '03', '04', '22'].includes(p)) || null;
+        tipoNormalizado = tipo === '22' ? '02' : tipo;
         angulo = partes.find(p => ['H', 'J', 'N', 'L', 'S'].includes(p)) || null;
         formatoEixo = partes.find(p => p === 'R') || null;
         conector = partes.find(p => ['CB', 'CS'].includes(p)) || null;
@@ -544,13 +560,14 @@
       }
 
       if (!tipo || !angulo) {
-        return { erro: 'Não consegui identificar tipo e ângulo no código DP. Exemplo mínimo aceito: DP 03 N.' };
+        return { erro: 'Não consegui identificar tipo e ângulo no código DP. Exemplos aceitos: DP 03 N, DPP02J ou DPP22J.' };
       }
 
       return {
         direcao: 'DP_AC',
         codigoLimpo: codigo,
         tipo,
+        tipoNormalizado,
         angulo,
         inicio,
         fim,
@@ -616,7 +633,7 @@
 
       const tipoDP = mapaTipo[dados.tipo];
       const anguloDP = mapaAngulo[dados.angulo];
-      const resultadoCurto = `DP ${tipoDP.dp} ${anguloDP.dp}`;
+      const resultadoCurto = `DP P ${tipoDP.dp} ${anguloDP.dp}`;
 
       codigoDP.textContent = resultadoCurto;
 
@@ -628,7 +645,7 @@
         ['Sentido da consulta', 'AC → DP'],
         ['Código AC identificado', dados.codigoLimpo],
         ['Montagem', `AC ${dados.mount} — ${montagem[dados.mount]}`],
-        ['Tipo de código', `${dados.tipo} → DP ${tipoDP.dp} — ${tipoDP.descricao}`],
+        ['Tipo de código', `${dados.tipo} → DP P ${tipoDP.dp} — ${tipoDP.descricao}`],
         ['Ângulo de passo', `${dados.angulo} → DP ${anguloDP.dp} — ${anguloDP.angulo}`],
         ['Faixa permitida', anguloDP.faixa],
         ['Posição início/fim', dados.inicio && dados.fim ? `${dados.inicio} a ${dados.fim}` : 'Não informada'],
@@ -642,7 +659,7 @@
 
       let sugestaoCompleta = resultadoCurto;
       if (dados.inicio && dados.fim) sugestaoCompleta += ` ${dados.inicio} ${dados.fim}`;
-      sugestaoCompleta += ` [conferir dados físicos: P/N, eixo R, comprimento 16/20 e conector]`;
+      sugestaoCompleta += ` [P = Waterproof; conferir demais dados físicos: eixo R, comprimento 16/20 e conector]`;
 
       codigoCompleto.textContent = `Modelo compatível base: ${sugestaoCompleta}`;
     }
@@ -653,7 +670,7 @@
       const detalhes = document.getElementById('detalhes');
       const codigoCompleto = document.getElementById('codigoCompleto');
 
-      const tipoAC = mapaTipoReverso[dados.tipo];
+      const tipoAC = mapaTipoReverso[dados.tipoNormalizado || dados.tipo];
       const anguloAC = mapaAnguloReverso[dados.angulo];
 
       if (!tipoAC || !anguloAC) {
@@ -678,7 +695,7 @@
       const itens = [
         ['Sentido da consulta', 'DP → AC'],
         ['Código DP identificado', dados.codigoLimpo],
-        ['Tipo de código', `DP ${dados.tipo} → ${tipoAC.ac} — ${tipoAC.descricao}`],
+        ['Tipo de código', `DP ${dados.tipo}${dados.tipo === '22' ? ' / normalizado como 02' : ''} → ${tipoAC.ac} — ${tipoAC.descricao}`],
         ['Ângulo de passo', `DP ${dados.angulo} → ${anguloAC.ac || 'sem equivalente AC'} — ${anguloAC.angulo}`],
         ['Faixa permitida', anguloAC.faixa],
         ['Montagem AC', 'Não informada pelo código DP curto. Confirmar se é AC 09, AC 16 ou AC 32.'],
